@@ -1,6 +1,6 @@
 ﻿---
 applications:
-- name: actuators-owinselfhost
+- name: actuators-owin-selfhost
   memory: 512M
   stack: windows2012R2
   buildpack: binary_buildpack

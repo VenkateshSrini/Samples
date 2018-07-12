@@ -1,4 +1,5 @@
 ﻿using Microsoft.Owin.Hosting;
+using Steeltoe.Common.Diagnostics;
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -30,6 +31,9 @@ namespace CloudFoundryOwinSelfHost
                 Console.WriteLine(response);
                 Console.WriteLine(await response.Content.ReadAsStringAsync());
                 Console.ReadLine();
+
+                // this may not be the best place for this
+                DiagnosticsManager.Instance.Stop();
             }
         }
     }

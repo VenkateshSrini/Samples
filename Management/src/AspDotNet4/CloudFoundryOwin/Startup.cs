@@ -1,4 +1,5 @@
 ﻿using Microsoft.Owin;
+using Microsoft.Owin.BuilderProperties;
 using MySql.Data.MySqlClient;
 using Owin;
 using Steeltoe.CloudFoundry.Connector;
@@ -23,7 +24,11 @@ using Steeltoe.Management.EndpointOwin.Refresh;
 using Steeltoe.Management.EndpointOwin.ThreadDump;
 using Steeltoe.Management.EndpointOwin.Trace;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Web.Http;
+using System.Web.Mvc;
+using System.Web.Routing;
 
 [assembly: OwinStartup(typeof(CloudFoundryOwin.Startup))]
 
@@ -33,8 +38,16 @@ namespace CloudFoundryOwin
     {
         public void Configuration(IAppBuilder app)
         {
-            // create a trace repository for use in both a request tracing middleware and the middleware for the /trace endpoint that returns those traces
             var config = GlobalConfiguration.Configuration;
+
+            // Add WebApi
+            WebApiConfig.Register(config);
+
+            // Add MVC
+            RouteConfig.RegisterRoutes(RouteTable.Routes);
+
+            ApplicationConfig.Configure("development");
+            ApplicationConfig.ConfigureLogging();
 
             app
                 .UseDiagnosticSourceMiddleware(ApplicationConfig.LoggerFactory)
@@ -51,7 +64,25 @@ namespace CloudFoundryOwin
                 .UseThreadDumpEndpointMiddleware(ApplicationConfig.Configuration, ApplicationConfig.LoggerFactory)
                 .UseTraceEndpointMiddleware(ApplicationConfig.Configuration, null, ApplicationConfig.LoggerFactory);
 
+            config.EnsureInitialized();
+
             DiagnosticsManager.Instance.Start();
+
+            var properties = new AppProperties(app.Properties);
+            CancellationToken token = properties.OnAppDisposing;
+            Task.Run(() => RunApp(token));
+        }
+
+        private static void RunApp(CancellationToken cancelToken)
+        {
+            while (true)
+            {
+                if (cancelToken.IsCancellationRequested)
+                {
+                    DiagnosticsManager.Instance.Stop();
+                    return;
+                }
+            }
         }
 
         private IEnumerable<IHealthContributor> GetHealthContributors()
